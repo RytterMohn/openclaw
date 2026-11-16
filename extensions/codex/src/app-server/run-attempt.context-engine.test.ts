@@ -584,7 +584,8 @@ describe("runCodexAppServerAttempt context-engine lifecycle", () => {
   it("persists the admitted user prompt before an async item buffered during turn startup", async () => {
     const params = await createSqliteParams(workspaceDir, "early-async-order");
     const delivered = Promise.withResolvers<void>();
-    params.onBlockReply = vi.fn(() => delivered.resolve());
+    const onBlockReply = vi.fn(() => delivered.resolve());
+    params.onBlockReply = onBlockReply;
     params.sandboxSessionKey = "agent:main:policy";
     params.contextEngine = createContextEngine();
     const beforeMessageWrite = vi.fn();
@@ -597,7 +598,8 @@ describe("runCodexAppServerAttempt context-engine lifecycle", () => {
     }
     recorder.markRuntimePersistencePending = vi.fn();
     recorder.markRuntimePersisted = vi.fn();
-    recorder.markSentToProvider = vi.fn();
+    const markSentToProvider = vi.fn();
+    recorder.markSentToProvider = markSentToProvider;
     const harness = createStartedThreadHarness(async (method) => {
       if (method === "turn/start") {
         await harness.notify({
@@ -628,8 +630,8 @@ describe("runCodexAppServerAttempt context-engine lifecycle", () => {
     expect(params.onBlockReply).toHaveBeenCalledOnce();
     expect(recorder.markSentToProvider).toHaveBeenCalledOnce();
     expect(recorder.markRuntimePersisted).toHaveBeenCalledOnce();
-    expect(recorder.markRuntimePersisted).toHaveBeenCalledBefore(recorder.markSentToProvider);
-    expect(recorder.markSentToProvider).toHaveBeenCalledBefore(params.onBlockReply);
+    expect(recorder.markRuntimePersisted).toHaveBeenCalledBefore(markSentToProvider);
+    expect(markSentToProvider).toHaveBeenCalledBefore(onBlockReply);
     expect(beforeMessageWrite).toHaveBeenCalledWith(
       expect.objectContaining({ message: expect.objectContaining({ role: "user" }) }),
       { agentId: "main", sessionKey: params.sessionKey },
