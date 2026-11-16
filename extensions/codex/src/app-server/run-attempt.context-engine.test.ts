@@ -597,9 +597,7 @@ describe("runCodexAppServerAttempt context-engine lifecycle", () => {
     }
     recorder.markRuntimePersistencePending = vi.fn();
     recorder.markRuntimePersisted = vi.fn();
-    recorder.markSentToProvider = vi.fn(() => {
-      throw new Error("admission is not available before Codex turn/start");
-    });
+    recorder.markSentToProvider = vi.fn();
     const harness = createStartedThreadHarness(async (method) => {
       if (method === "turn/start") {
         await harness.notify({
@@ -628,8 +626,10 @@ describe("runCodexAppServerAttempt context-engine lifecycle", () => {
       "Codex attempt completed before delivering its buffered async item",
     );
     expect(params.onBlockReply).toHaveBeenCalledOnce();
-    expect(recorder.markSentToProvider).not.toHaveBeenCalled();
+    expect(recorder.markSentToProvider).toHaveBeenCalledOnce();
     expect(recorder.markRuntimePersisted).toHaveBeenCalledOnce();
+    expect(recorder.markRuntimePersisted).toHaveBeenCalledBefore(recorder.markSentToProvider);
+    expect(recorder.markSentToProvider).toHaveBeenCalledBefore(params.onBlockReply);
     expect(beforeMessageWrite).toHaveBeenCalledWith(
       expect.objectContaining({ message: expect.objectContaining({ role: "user" }) }),
       { agentId: "main", sessionKey: params.sessionKey },
