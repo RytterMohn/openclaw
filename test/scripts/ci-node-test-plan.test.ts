@@ -3012,6 +3012,112 @@ describe("scripts/lib/ci-node-test-plan.mts", () => {
     },
   );
 
+  it("shares selected serial setup within the shortest contributing timeout", async () => {
+    const serialTargets = [
+      "src/gateway/server-methods/plugins.decisions.test.ts",
+      "src/gateway/server-methods/plugins.retention.test.ts",
+      "src/gateway/server-methods/plugins.runtime-owner.test.ts",
+      "src/gateway/server-methods/plugins.test.ts",
+      "src/gateway/server-methods/templates-add.test.ts",
+      "src/gateway/server-methods/templates.test.ts",
+      "src/gateway/server-plugin-reload.installed-package.test.ts",
+    ];
+    const targets = ["src/gateway/client-callsites.guard.test.ts", ...serialTargets];
+    const methods = serialTargets.slice(0, 6);
+    const server = serialTargets[6]!;
+    const client = targets[0]!;
+    const methodSibling = "src/gateway/server-methods/health.owner-routing.test.ts";
+    const serverSibling = "src/gateway/server.startup-fixture-lifetime.test.ts";
+    const clientSibling = "src/gateway/client.test.ts";
+    const owners = [
+      {
+        name: "fixture-serial-methods",
+        config: configPath("gateway-methods"),
+        files: [...methods, methodSibling],
+        seconds: 300,
+        split: true,
+      },
+      {
+        name: "fixture-serial-support",
+        config: configPath("gateway-core"),
+        files: [
+          "src/gateway/mcp-app-extension-runtime.test.ts",
+          "src/gateway/mcp-app-form-resources.test.ts",
+        ],
+        seconds: 300,
+        split: true,
+      },
+      {
+        name: "fixture-serial-server",
+        config: configPath("gateway-server"),
+        files: [server, serverSibling],
+        seconds: 200,
+        split: false,
+      },
+      {
+        name: "fixture-serial-client",
+        config: configPath("gateway-client"),
+        files: [client, clientSibling],
+        seconds: 100,
+        split: false,
+      },
+    ];
+    // Explicit owner costs keep the full 60/120-minute envelopes separate;
+    // selecting their cheap tails must share setup without inheriting 120 minutes.
+    vi.resetModules();
+    mockPlanShards(() => owners.map(({ name, config }) => fixtureShard(name, [config])));
+    mockTrackedFiles(() => owners.flatMap(({ files }) => files));
+    mockOriginal("inventory", {
+      listNodeTestConfigFiles: (config) => owners.find((owner) => owner.config === config)?.files,
+      listWholeConfigFiles: (name) => owners.find((owner) => owner.name === name)?.files,
+      listWholeConfigSplitFiles: (name) => owners.find((owner) => owner.name === name)?.files,
+      canSplitWholeConfigGroup: (name) =>
+        owners.find((owner) => owner.name === name)?.split ?? false,
+    });
+    mockOriginal("build", {
+      resolveVitestPretestBuildMode: () => undefined,
+      listVitestRuntimeConsumerFiles: () => [],
+    });
+    mockOriginal("metadata", {
+      estimateVitestTestFileSeconds: (file) =>
+        [methodSibling, serverSibling, clientSibling].includes(file) ? 6 : 1,
+    });
+    mockPlanTimings(() => Object.fromEntries(owners.map(({ name, seconds }) => [name, seconds])));
+    const { createSelectedNodeTestShardBundles: select } = await loadPlanModule([
+      "inventory",
+      "build",
+      "metadata",
+    ]);
+    const contributors = [methods, [server, client]].map((files) =>
+      only(required(select(files, { runnerBackend: "hybrid" }))),
+    );
+    expect(contributors.map((job) => job.timeoutMinutes ?? 60)).toEqual([60, 120]);
+    const selected = expectDefined(
+      select(targets, {
+        runnerBackend: "hybrid",
+      }),
+      "qualified serial selection",
+    );
+    const serial = expectDefined(
+      selected.find((job) =>
+        serialTargets.every((target) =>
+          job.groups.some((group) => group.includePatterns?.includes(target)),
+        ),
+      ),
+      "shared serial selection",
+    );
+    expect(serial).toMatchObject({
+      runner: "blacksmith-32vcpu-ubuntu-2404",
+      planConcurrency: 1,
+    });
+    expect(serial.timeoutMinutes ?? 60).toBe(60);
+    expect(
+      selected
+        .flatMap((job) => job.groups.flatMap((group) => group.includePatterns ?? []))
+        .toSorted(),
+    ).toEqual(targets.toSorted());
+  });
+
   it("shares one prepared runtime across affordable github groups", async () => {
     const runnerBackend = "github";
     const config = configPath("infra");
