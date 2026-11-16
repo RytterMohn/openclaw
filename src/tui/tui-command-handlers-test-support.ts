@@ -1,4 +1,4 @@
-import { expect, vi } from "vitest";
+import { vi } from "vitest";
 import type { SessionProjectionState } from "../../packages/gateway-client/src/session-projection.js";
 import type { TuiBackend } from "./tui-backend.js";
 import { createCommandHandlers } from "./tui-command-handlers.js";
@@ -10,12 +10,6 @@ export type LoadHistoryMock = ReturnType<typeof vi.fn> & (() => Promise<void>);
 type RunAuthFlow = NonNullable<Parameters<typeof createCommandHandlers>[0]["runAuthFlow"]>;
 type AbortActiveMock = ReturnType<typeof vi.fn> &
   ((params?: { preferActive?: boolean }) => Promise<void>);
-export type SelectableOverlay = {
-  items?: Array<{ value: string; label?: string; description?: string }>;
-  onSelect?: (item: { value: string; label?: string; description?: string }) => void;
-  render: (width: number) => string[];
-  handleInput: (data: string) => void;
-};
 type SetActivityStatusMock = ReturnType<typeof vi.fn> & ((text: string) => void);
 export type SetSessionMock = ReturnType<typeof vi.fn> &
   ((key: string, agentId?: string) => Promise<void>);
@@ -27,33 +21,6 @@ export async function flushAsyncSelect() {
   await new Promise<void>((resolve) => {
     setImmediate(resolve);
   });
-}
-
-export function expectSendChatFields(
-  sendChat: ReturnType<typeof vi.fn>,
-  expected: { message: string; agentId?: string; sessionId?: string; sessionKey?: string },
-) {
-  const calls = sendChat.mock.calls;
-  const call = calls[calls.length - 1];
-  if (!call) {
-    throw new Error("expected gateway sendChat call");
-  }
-  const payload = call[0] as {
-    message?: unknown;
-    agentId?: unknown;
-    sessionId?: unknown;
-    sessionKey?: unknown;
-  };
-  expect(payload.message).toBe(expected.message);
-  if (expected.agentId !== undefined) {
-    expect(payload.agentId).toBe(expected.agentId);
-  }
-  if (expected.sessionId !== undefined) {
-    expect(payload.sessionId).toBe(expected.sessionId);
-  }
-  if (expected.sessionKey !== undefined) {
-    expect(payload.sessionKey).toBe(expected.sessionKey);
-  }
 }
 
 type MockWithCalls = { mock: { calls: unknown[][] } };
