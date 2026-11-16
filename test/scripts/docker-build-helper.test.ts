@@ -2693,7 +2693,6 @@ openclaw_e2e_probe_tcp 127.0.0.1 18789 400`,
           await fetch(url, { signal: AbortSignal.timeout(1_000) })
         ).json()) as { pid: number; managed: boolean };
         expect(initial.managed).toBe(true);
-        // Restart/replacement ownership is covered by upgrade-survivor-systemd.test.ts.
         expect(probeListener().status).toBe(0);
         expect(systemctl("stop", "openclaw-gateway.service").status).toBe(0);
         expect(probeListener().status).toBe(1);
