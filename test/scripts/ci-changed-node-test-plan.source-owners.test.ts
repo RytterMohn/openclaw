@@ -295,7 +295,6 @@ describe("CI changed Node test plan", () => {
       source: "src/channels/message-access/operator-authority.test-support.ts",
       targets: [
         "src/agents/command/delivery.restart-final.integration.test.ts",
-        "src/agents/command/delivery.settle-reset.integration.test.ts",
         "src/auto-reply/reply/commands-acp.owner.test.ts",
         "src/auto-reply/reply/commands-allowlist.owner.test.ts",
         "src/auto-reply/reply/commands-plugin.channel-native.test.ts",
