@@ -357,13 +357,20 @@ describe("message actions through the CLI parser", () => {
       ["node", "openclaw", "message", "send", "--json"],
       async () => {
         applyResolvedCommandOutputMode(true);
-        await expect(parseAction("send", { ...baseSendOptions, json: true })).rejects.toBe(error);
+        await expect(parseAction("send", { ...baseSendOptions, json: true })).rejects.toMatchObject(
+          {
+            name: "ExpectedCliError",
+            cause: error,
+            machineOutput: error.message,
+            humanOutputWritten: true,
+          },
+        );
       },
     );
     expectConfigReady("send", false, true);
     expect(loadPluginRegistryHandleMock).not.toHaveBeenCalled();
     expect(messageCommandMock).not.toHaveBeenCalled();
-    expect(errorMock).not.toHaveBeenCalled();
+    expect(errorMock).toHaveBeenCalledExactlyOnceWith(error.message);
     expect(exitMock).not.toHaveBeenCalled();
   });
 
