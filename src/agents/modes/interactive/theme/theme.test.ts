@@ -40,6 +40,14 @@ describe("loadThemeFromPath", () => {
     expect(() => loadColor({ accent: 256 })).toThrow("/colors/accent");
   });
 
+  it.each(["256color", "truecolor"] as const)("rejects malformed hex colors in %s", (mode) => {
+    for (const color of ["#1z2y3x", "#-1-2-3", "#fff", "#123456\n"]) {
+      for (const token of ["accent", "selectedBg"] as const) {
+        expect(() => loadColor({ [token]: color }, mode)).toThrow(`Invalid hex color: ${color}`);
+      }
+    }
+  });
+
   it.each([
     ["#0000ff", 21],
     ["#2f00ff", 21],
@@ -69,7 +77,7 @@ describe("loadThemeFromPath", () => {
   });
 
   it("preserves RGB channels in truecolor output", () => {
-    const theme = loadColor("#5f87af", "truecolor");
+    const theme = loadColor("#5F87aF", "truecolor");
     expectColors(theme, "\x1b[38;2;95;135;175m", "\x1b[48;2;95;135;175m");
   });
 

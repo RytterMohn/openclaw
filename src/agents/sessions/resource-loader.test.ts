@@ -36,6 +36,31 @@ function createLoader(
 }
 
 describe("DefaultResourceLoader", () => {
+  it("warns about malformed theme variables while retaining valid themes", async () => {
+    const root = tempDirs.make("openclaw-resource-theme-colors-");
+    const colors = ["#1z2y3x", "#-1-2-3", "#5F87aF"];
+    const paths = colors.map((_, index) => join(root, `theme-${index}.json`));
+    for (const [index, color] of colors.entries()) {
+      await writeFile(
+        paths[index]!,
+        JSON.stringify({ ...darkTheme, vars: { ...darkTheme.vars, cyan: color } }),
+      );
+    }
+    const loader = createLoader(root);
+    await loader.reload();
+    loader.extendResources({ themePaths: paths.map((path) => entry(path)) });
+
+    const { themes, diagnostics } = loader.getThemes();
+    expect(themes.map((theme) => theme.sourcePath)).toEqual([paths[2]]);
+    expect(diagnostics).toEqual(
+      colors.slice(0, 2).map((color, index) => ({
+        type: "warning",
+        path: paths[index],
+        message: `Invalid hex color: ${color}`,
+      })),
+    );
+  });
+
   it("loads explicit prompts and themes without ambient resolution, retaining the first collision owner", async () => {
     const root = tempDirs.make("openclaw-resource-collisions-");
     const paths: [string, string] = [join(root, "first"), join(root, "second")];

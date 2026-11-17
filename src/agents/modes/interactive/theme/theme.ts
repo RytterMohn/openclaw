@@ -30,16 +30,13 @@ const THINKING_BORDER_COLORS = new Map<string, ThemeColor>([
 ]);
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const cleaned = hex.replace("#", "");
-  if (cleaned.length !== 6) {
+  const cleaned = hex.slice(1);
+  if (cleaned.length !== 6 || /[^0-9a-f]/i.test(cleaned)) {
     throw new Error(`Invalid hex color: ${hex}`);
   }
   const r = Number.parseInt(cleaned.slice(0, 2), 16);
   const g = Number.parseInt(cleaned.slice(2, 4), 16);
   const b = Number.parseInt(cleaned.slice(4, 6), 16);
-  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
-    throw new Error(`Invalid hex color: ${hex}`);
-  }
   return { r, g, b };
 }
 
